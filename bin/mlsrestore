@@ -1,0 +1,92 @@
+#!/usr/bin/perl -- # --*-Perl-*--
+
+use strict;
+use English;
+use Getopt::Std;
+use LWP::UserAgent;
+use vars qw($opt_p $opt_m $opt_d $opt_i);
+
+my $usage = "Usage: $0 -m mlsroot -d database [-p pause] [-i filelist | directory]\n";
+
+die $usage if ! getopts('d:p:m:i:');
+
+die $usage if ! defined($opt_m);
+die $usage if ! defined($opt_d);
+
+my $filelist = $opt_i;
+my $directory = shift;
+
+die $usage if (!defined($filelist) && !defined($directory)) || (defined($filelist) && defined($directory));
+
+my $db = $opt_d;
+my $path = $opt_m;
+my $pause = $opt_p || 500;
+
+$path =~ s/\/$//;
+$path = "http://" . $path unless $path =~ /\/\//;
+
+# not supported yet
+my $username = undef;
+my $password = undef;
+
+my $ua = new LWP::UserAgent;
+$ua->agent("mlsrestore.pl/0.1 " . $ua->agent);
+
+my @files = ();
+if (defined($filelist)) {
+    open (F, $filelist) || die "Cannot open files list: $filelist\n";
+    while (<F>) {
+        chop;
+        push (@files, $_);
+    }
+    close (F);
+} else {
+    open (F, "find \"$directory\" -type f -name \"*.xml\" -print |");
+    while (<F>) {
+        chop;
+        push (@files, $_);
+    }
+    close (F);
+}
+
+my $count = 0;
+my $total = $#files + 1;
+while (@files) {
+    $count++;
+    my $file = shift @files;
+    print STDERR "Posting $count of $total (", int($count*100 / $total), "%): $file\n";
+
+    if ($count % $pause == 0) {
+        sleep(5);
+    }
+
+    my $uri = "$path/restore.xqy?database=$db";
+    my $req = new HTTP::Request("POST" => $uri);
+
+    open (F, $file) || die "Can't read $file\n";
+    read (F, $_, -s $file);
+    close (F);
+
+    $req->content($_);
+    $req->header("Content-Type" => "application/xml");
+
+    my $resp = $ua->request($req);
+
+    if ($resp->code() == 401 && defined($username) && defined($password)) {
+        #print "Authentication required. Trying again with specified credentials.\n";
+
+        my $host = $uri;
+        $host =~ s/^.*?\/([^\/]+).*?$/$1/;
+
+        my $realm = scalar($resp->header('WWW-Authenticate'));
+        $realm =~ s/^.*?realm=([\'\"])(.*?)\1.*$/$2/;
+
+        $ua->credentials($host, $realm, $username => $password);
+        $resp = $ua->request($req);
+    }
+
+    if ($resp->code() != 200) {
+        print STDERR "ERROR: ", $resp->code(), "\n";
+        exit(1);
+    }
+}

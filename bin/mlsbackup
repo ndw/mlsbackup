@@ -1,0 +1,109 @@
+#!/usr/bin/perl -- # --*-Perl-*--
+
+use strict;
+use English;
+use Getopt::Std;
+use LWP::UserAgent;
+use vars qw($opt_r $opt_m $opt_p $opt_s $opt_i $opt_d);
+
+my $usage = "Usage: $0 -r root -m mlsroot -d database [-s since] [-i uris] [-p pause]\n";
+
+die $usage if ! getopts('p:r:m:s:i:d:');
+
+die $usage if ! defined($opt_r);
+die $usage if ! defined($opt_m);
+die $usage if ! defined($opt_d);
+
+my $path = $opt_m;
+my $root = $opt_r;
+my $pause = $opt_p || 500;
+my $uris = $opt_i;
+my $since = $opt_s;
+my $db = $opt_d;
+
+$root =~ s/\/$//;
+$path =~ s/\/$//;
+$path = "http://" . $path unless $path =~ /\/\//;
+
+# not supported yet
+my $username = undef;
+my $password = undef;
+
+my $ua = new LWP::UserAgent;
+$ua->agent("mlsbackup.pl/0.1 " . $ua->agent);
+
+my $global_data = "";
+
+my @files = ();
+if (defined($uris)) {
+    open (F, $uris) || die "Cannot open URI file: $uris\n";
+    while (<F>) {
+        chop;
+        push (@files, $_);
+    }
+    close (F);
+} else {
+    print STDERR "Reading URIs from server" . (defined($since) ? " (since $since)\n" : "\n");
+    my $uriuri = "$path/uris.xqy?database=$db";
+    $uriuri .= "?since=$since" if defined($since);
+    $uris = $ua->get($uriuri);
+    if ($uris->is_success) {
+        @files = split(/\n/, $uris->decoded_content);
+    } else {
+        die "Failed to get URIS: " . $uris->status_line . "\n";
+    }
+}
+
+my $count = 0;
+my $total = $#files + 1;
+while (@files) {
+    $count++;
+    my $uri = shift @files;
+    my $dir = $uri;
+    $dir =~ s/^\///;
+    $dir =~ s/\/[^\/]+$//;
+
+    $dir = "$root/$dir";
+
+    system("mkdir -p $dir") unless -d $dir;
+    die "Cannot create $dir (for $uri)\n" unless -d $dir;
+
+    print STDERR "Getting $count of $total (", int($count*100 / $total), "%): $uri\n";
+
+    my $requri = $path . "/backup.xqy?database=$db&uri=$uri";
+    my $file = $uri;
+    $file =~ s/^\///;
+    $file .= ".xml";
+
+    if ($count % $pause == 0) {
+        sleep(5);
+    }
+
+    $requri =~ s/\+/%2B/sg;
+
+    getURL($requri, "$root/$file");
+}
+
+sub getURL {
+    my $url = shift;
+    my $file = shift;
+    my $req = new HTTP::Request GET => $url;
+
+    $global_data = "";
+    my $res = $ua->request($req, \&callback, 40960);
+
+    if ($res->code() != 200) {
+        print STDERR "ERROR: ", $res->code(), " on $url\n";
+        exit(1);
+    }
+
+    open (F, ">$file");
+    print F $global_data;
+    close (F);
+}
+
+sub callback {
+    my($data, $response, $protocol) = @_;
+    my $clength = $response->content_length();
+    $global_data .= $data;
+}
