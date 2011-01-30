@@ -1,0 +1,13 @@
+Call me old fashioned. Call me paranoid. Call me anything you'd like,
+but don't call me late for dinner, as my father would say.
+
+Storing XML in a database is an absolutely necessary and entirely
+practical solution for building high-performance applications. But
+from my perspective one of the key benefits of XML is that XML
+documents are ordinary text (well, Unicode). You can store them
+on an ordinary filesystem and expect them to last indefinitely.
+
+The code in this project supports the ability to backup a MarkLogic
+database to a collection of plain text files on the filesystem.
+
+[[ FIXME: write a more complete description. ]]
