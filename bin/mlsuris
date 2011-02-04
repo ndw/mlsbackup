@@ -1,0 +1,40 @@
+#!/usr/bin/perl -- # --*-Perl-*--
+
+use strict;
+use English;
+use Getopt::Std;
+use LWP::UserAgent;
+use vars qw($opt_m $opt_s $opt_d);
+
+my $usage = "Usage: $0 -m mlsroot -d database [-s since]\n";
+
+die $usage if ! getopts('m:s:d:');
+
+die $usage if ! defined($opt_m);
+die $usage if ! defined($opt_d);
+
+my $path = $opt_m;
+my $since = $opt_s;
+my $db = $opt_d;
+
+$path =~ s/\/$//;
+$path = "http://" . $path unless $path =~ /\/\//;
+
+# not supported yet
+my $username = undef;
+my $password = undef;
+
+my $ua = new LWP::UserAgent;
+$ua->agent("mlsuris.pl/0.1 " . $ua->agent);
+
+print STDERR "Reading URIs from server" . (defined($since) ? " (since $since)\n" : "\n");
+my $uriuri = "$path/uris.xqy?database=$db";
+$uriuri .= "&since=$since" if defined($since);
+my $uris = $ua->get($uriuri);
+if ($uris->is_success) {
+    foreach $_ (split(/\n/, $uris->decoded_content)) {
+        print "$_\n";
+    }
+} else {
+    die "Failed to get URIS: " . $uris->status_line . "\n";
+}
