@@ -21,8 +21,13 @@ declare option xdmp:output "method=xml";
 declare option xdmp:output "indent=no";
 
 declare function local:backup($uri as xs:string) {
-  let $doc := xdmp:eval("declare variable $uri as xs:string external; doc($uri)",
-                        (xs:QName("uri"), $uri), $evalopts)
+  let $doc  := xdmp:eval("declare variable $uri as xs:string external; doc($uri)",
+                         (xs:QName("uri"), $uri), $evalopts)
+  let $coll := xdmp:eval("declare variable $uri as xs:string external; xdmp:document-get-collections($uri)",
+                         (xs:QName("uri"), $uri), $evalopts)
+  let $perm := xdmp:eval("declare variable $uri as xs:string external; xdmp:document-get-permissions($uri)",
+                         (xs:QName("uri"), $uri), $evalopts)
+
   let $config := admin:get-configuration()
   let $format
     := if (count($doc/node()) = 1 and xdmp:node-kind(($doc/node())[1]) = "text")
@@ -38,11 +43,11 @@ declare function local:backup($uri as xs:string) {
     <document uri="{$uri}">
       <metadata>
         <format>{$format}</format>
-        { for $c in xdmp:document-get-collections($uri)
+        { for $c in $coll
           return
             <collection>{$c}</collection>
         }
-        { for $p in xdmp:document-get-permissions($uri)
+        { for $p in $perm
           let $capability := string($p/sec:capability)
           let $id := xs:unsignedLong($p/sec:role-id)
           let $name := xdmp:eval("
