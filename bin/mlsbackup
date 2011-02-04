@@ -45,7 +45,7 @@ if (defined($uris)) {
 } else {
     print STDERR "Reading URIs from server" . (defined($since) ? " (since $since)\n" : "\n");
     my $uriuri = "$path/uris.xqy?database=$db";
-    $uriuri .= "?since=$since" if defined($since);
+    $uriuri .= "&since=$since" if defined($since);
     $uris = $ua->get($uriuri);
     if ($uris->is_success) {
         @files = split(/\n/, $uris->decoded_content);
