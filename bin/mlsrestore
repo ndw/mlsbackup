@@ -29,8 +29,11 @@ $path = "http://" . $path unless $path =~ /\/\//;
 my $username = undef;
 my $password = undef;
 
+my %FAILED = ();
+
 my $ua = new LWP::UserAgent;
 $ua->agent("mlsrestore.pl/0.1 " . $ua->agent);
+$ua->timeout(300);
 
 my @files = ();
 if (defined($filelist)) {
@@ -86,7 +89,13 @@ while (@files) {
     }
 
     if ($resp->code() != 200) {
+        $FAILED{$file} = "ERROR: " . $resp->code() . "\n" . $resp->as_string();
         print STDERR "ERROR: ", $resp->code(), "\n";
-        exit(1);
+        print STDERR $resp->as_string();
     }
+}
+
+foreach my $file (sort keys %FAILED) {
+    print STDERR "FAILED: ", $file, "\n";
+    print STDERR $FAILED{$file}, "\n\n";
 }
