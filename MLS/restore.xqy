@@ -18,7 +18,14 @@ declare variable $evalopts
 
 declare option xdmp:mapping "false";
 
-declare variable $doc := xdmp:get-request-body("xml");
+declare variable $doc
+  := try {
+       xdmp:get-request-body("xml")
+     } catch ($e) {
+       (xdmp:log($e),
+        xdmp:log(xdmp:get-request-body("text")),
+        error(xs:QName("ERRBADREQ"), xdmp:get-request-body("text"), $e))
+     };
 
 declare function local:restore($doc as element(document)) {
   let $uri := string($doc/@uri)
