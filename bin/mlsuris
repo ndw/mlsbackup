@@ -4,18 +4,30 @@ use strict;
 use English;
 use Getopt::Std;
 use LWP::UserAgent;
-use vars qw($opt_m $opt_s $opt_d);
+use vars qw($opt_m $opt_s $opt_d $opt_t);
 
-my $usage = "Usage: $0 -m mlsroot -d database [-s since]\n";
+my $usage = "Usage: $0 -m mlsroot -d database [-s since|-t timestamp]\n";
 
-die $usage if ! getopts('m:s:d:');
+die $usage if ! getopts('m:s:t:d:');
 
 die $usage if ! defined($opt_m);
 die $usage if ! defined($opt_d);
+die $usage if defined($opt_s) && defined($opt_t);
 
 my $path = $opt_m;
 my $since = $opt_s;
+my $tstamp = $opt_t;
 my $db = $opt_d;
+
+if (defined($tstamp)) {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+        $atime,$mtime,$ctime,$blksize,$blocks) = stat($tstamp);
+    if (!defined($mtime)) {
+        die "No such file: $tstamp\n";
+    }
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime($mtime);
+    $since = sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1, $mday, $hour, $min, $sec);
+}
 
 $path =~ s/\/$//;
 $path = "http://" . $path unless $path =~ /\/\//;
