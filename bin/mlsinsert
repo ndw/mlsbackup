@@ -1,0 +1,101 @@
+#!/usr/bin/perl -- # -*- Perl -*-
+
+use strict;
+use English;
+use Getopt::Std;
+use LWP::UserAgent;
+use vars qw($opt_f $opt_b $opt_d $opt_u $opt_m $opt_p $opt_t $opt_P $opt_U);
+
+my $usage = "Usage: $0 -f file -m mlsroot -d database {-b base | -p path | -u uri} [-t type] [-U username] [-P password]";
+
+die $usage if ! getopts('f:b:d:u:m:p:U:P:');
+
+die $usage if ! defined($opt_f);
+die $usage if ! defined($opt_m);
+die $usage if ! defined($opt_d);
+die $usage if defined($opt_b) && defined($opt_p);
+die $usage if defined($opt_b) && defined($opt_u);
+die $usage if defined($opt_p) && defined($opt_u);
+
+my $file = $opt_f;
+my $mlsroot = $opt_m;
+my $db = $opt_d;
+my $uri = computeUri($file, $opt_b, $opt_p, $opt_u);
+my $type = $opt_t || "application/xml";
+
+# not supported yet
+my $username = $opt_U;
+my $password = $opt_P;
+
+my $ua = new LWP::UserAgent;
+$ua->agent("mlsinsert.pl/0.1 " . $ua->agent);
+$ua->timeout(300);
+
+my $posturi = "$mlsroot/insert.xqy?database=$db&uri=$uri";
+my $req = new HTTP::Request("POST" => $posturi);
+
+open (F, $file) || die "$usage\nCan't read $file\n";
+read (F, $_, -s $file);
+close (F);
+
+$req->content($_);
+$req->header("Content-Type" => $type);
+
+my $resp = $ua->request($req);
+
+if ($resp->code() == 401) {
+    my $host = $posturi;
+    $host =~ s/^.*?\/([^\/]+).*?$/$1/;
+    if (!defined($username) || !defined($password)) {
+        # This is a hack that I might pull out
+        my $path = $ENV{'HOME'};
+        $path .= "/" unless $path =~ /\/$/;
+        open (F, $path . ".netrc");
+        while (<F>) {
+            chop;
+            if (/^\s*marklogic\s+$host\s+/) {
+                $username = $1 if /\s+login\s+(\S+)/;
+                $password = $1 if /\s+password\s+(\S+)/;
+                last;
+            }
+        }
+    }
+
+    if (!defined($username) || !defined($password)) {
+        print STDERR "Authentication required and no credentials available.\n";
+        exit 1;
+    }
+
+    #print "Authentication required. Trying again with specified credentials.\n";
+    my $realm = scalar($resp->header('WWW-Authenticate'));
+    $realm =~ s/^.*?realm=([\'\"])(.*?)\1.*$/$2/;
+    $ua->credentials($host, $realm, $username => $password);
+    $resp = $ua->request($req);
+}
+
+if ($resp->code() == 200) {
+    print STDERR "Inserted $file as $uri in $db\n";
+} else {
+    print STDERR "ERROR: ", $resp->code(), "\n";
+    print STDERR $resp->as_string();
+}
+
+exit 0;
+
+sub computeUri {
+    my $file = shift;
+    my $base = shift;
+    my $dir = shift;
+    my $uri = shift;
+
+    return $uri if defined($uri);
+
+    if (defined($base)) {
+        $base .= "/" unless $base =~ /\/$/;
+        $file =~ s/^.*\/([^\/]+)$/$1/ if $file =~ /\//;
+        return $base . $file;
+    }
+
+    $dir .= "/" unless $dir =~ /\/$/;
+    return $dir . $file;
+}
