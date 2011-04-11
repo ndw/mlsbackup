@@ -4,22 +4,35 @@ use strict;
 use English;
 use Getopt::Std;
 use LWP::UserAgent;
-use vars qw($opt_r $opt_m $opt_p $opt_s $opt_i $opt_d);
+use vars qw($opt_r $opt_m $opt_p $opt_s $opt_i $opt_d $opt_t);
 
-my $usage = "Usage: $0 -r root -m mlsroot -d database [-s since] [-i uris] [-p pause]\n";
+my $usage = "Usage: $0 -r root -m mlsroot -d database [-s since|-t timestamp] [-i uris] [-p pause]\n";
 
-die $usage if ! getopts('p:r:m:s:i:d:');
+die $usage if ! getopts('p:r:m:s:t:i:d:');
 
 die $usage if ! defined($opt_r);
 die $usage if ! defined($opt_m);
 die $usage if ! defined($opt_d);
+die $usage if defined($opt_s) && defined($opt_t);
 
 my $path = $opt_m;
 my $root = $opt_r;
 my $pause = $opt_p || 500;
 my $uris = $opt_i;
 my $since = $opt_s;
+my $tstamp = $opt_t;
 my $db = $opt_d;
+my @ERRORS = ();
+
+my $now = time();
+if (defined($tstamp)) {
+    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+        $atime,$mtime,$ctime,$blksize,$blocks) = stat($tstamp);
+    if (defined($mtime)) {
+        my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime($mtime);
+        $since = sprintf("%04d-%02d-%02dT%02d:%02d:%02dZ", $year+1900, $mon+1, $mday, $hour, $min, $sec);
+    }
+}
 
 $root =~ s/\/$//;
 $path =~ s/\/$//;
@@ -84,6 +97,21 @@ while (@files) {
     getURL($requri, "$root/$file");
 }
 
+if (defined($tstamp)) {
+    if (! -f $tstamp) {
+        open (F, ">$tstamp");
+        close (F);
+    }
+    utime($now, $now, $tstamp);
+}
+
+if (@ERRORS) {
+    print STDERR "Error summary:\n";
+    foreach my $error (@ERRORS) {
+        print STDERR "$error\n";
+    }
+}
+
 sub getURL {
     my $url = shift;
     my $file = shift;
@@ -93,8 +121,11 @@ sub getURL {
     my $res = $ua->request($req, \&callback, 40960);
 
     if ($res->code() != 200) {
-        print STDERR "ERROR: ", $res->code(), " on $url\n";
-        exit(1);
+        my $msg := "ERROR: " . $res->code() . " on $url";
+        push (@ERRORS, $msg);
+        print STDERR "$msg\n";
+        print STDERR "\t", $res->as_string(), "\n";
+        return;
     }
 
     open (F, ">$file");
