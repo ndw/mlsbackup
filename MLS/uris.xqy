@@ -39,14 +39,15 @@ else
                       try {
                         for $doc in cts:search(collection(),
                                         cts:properties-query(
-                                            cts:element-range-query($lmprop,'>',$since)))
+                                            cts:element-range-query($lmprop,'>=',$since)))
                         return
                           xdmp:node-uri($doc)
                       } catch ($e) {
+                        let $trace := xdmp:log('MLSBackup warning: No element-range-index for prop:last-modified')
                         for $doc in collection()
                         let $uri := xdmp:node-uri($doc)
                         let $lm := xs:dateTime(xdmp:document-get-properties($uri, $lmprop))
-                        where $lm > $since
+                        where $lm >= $since
                         return
                           xdmp:node-uri($doc)
                       }"
