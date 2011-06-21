@@ -55,5 +55,5 @@ foreach my $db (@databases) {
     my $dir = "$root/$lcdb";
     mkdir($dir, 0755) unless -d $dir;
     die "Failed to create directory: $dir\n" unless -d $dir;
-    system("mlsbackup -m $path -p $pause -r $dir $stamp $db");
+    system("mlsbackup -m $path -p $pause -r $dir $stamp -d $db");
 }
