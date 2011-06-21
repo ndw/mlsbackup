@@ -8,7 +8,7 @@ use vars qw($opt_f $opt_b $opt_d $opt_u $opt_m $opt_p $opt_t $opt_P $opt_U);
 
 my $usage = "Usage: $0 -f file -m mlsroot -d database {-b base | -p path | -u uri} [-t type] [-U username] [-P password]";
 
-die $usage if ! getopts('f:b:d:u:m:p:U:P:');
+die $usage if ! getopts('f:b:d:u:m:p:U:P:t:');
 
 die $usage if ! defined($opt_f);
 die $usage if ! defined($opt_m);
@@ -53,7 +53,7 @@ if ($resp->code() == 401) {
         open (F, $path . ".netrc");
         while (<F>) {
             chop;
-            if (/^\s*marklogic\s+$host\s+/) {
+            if (/^\#marklogic\s+$host\s+/) {
                 $username = $1 if /\s+login\s+(\S+)/;
                 $password = $1 if /\s+password\s+(\S+)/;
                 last;
