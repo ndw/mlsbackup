@@ -1,0 +1,59 @@
+#!/usr/bin/perl -- # --*-Perl-*--
+
+use strict;
+use English;
+use Getopt::Std;
+use LWP::UserAgent;
+use vars qw($opt_r $opt_m $opt_p $opt_s $opt_i $opt_d $opt_t);
+
+my $usage = "Usage: $0 -r root -m mlsroot [-s since|-t] [-p pause]\n";
+
+die $usage if ! getopts('r:p:m:s:t');
+
+die $usage if ! defined($opt_m);
+die $usage if defined($opt_s) && defined($opt_t);
+
+my $path = $opt_m;
+my $root = $opt_r || ".";
+my $pause = $opt_p || 500;
+my $since = $opt_s;
+my $tstamp = $opt_t;
+
+$root =~ s/\/$//;
+$path =~ s/\/$//;
+$path = "http://" . $path unless $path =~ /\/\//;
+
+die "Root directory does not exist: $root\n" unless -d $root;
+
+# not supported yet
+my $username = undef;
+my $password = undef;
+
+my $ua = new LWP::UserAgent;
+$ua->agent("mlsall.pl/0.1 " . $ua->agent);
+
+my $global_data = "";
+
+print STDERR "Reading databases from server\n";
+my @databases = ();
+my $dburi = "$path/databases.xqy";
+my $db = $ua->get($dburi);
+if ($db->is_success) {
+    @databases = split(/\n/, $db->decoded_content);
+} else {
+    die "Failed to get databases: $dburi: " . $db->status_line . "\n";
+}
+
+my $count = 0;
+foreach my $db (@databases) {
+    $count++;
+
+    print STDERR "Backing up $count of ", $#databases+1, ": $db\n";
+
+    my $lcdb = lc($db);
+    my $stamp = $tstamp ? "-t $root/stamp.$lcdb" : "";
+    my $dir = "$root/$lcdb";
+    mkdir($dir, 0755) unless -d $dir;
+    die "Failed to create directory: $dir\n" unless -d $dir;
+    system("mlsbackup -m $path -p $pause -r $dir $stamp $db");
+}
