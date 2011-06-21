@@ -36,6 +36,7 @@ else
   let $sincequery := "declare namespace prop='http://marklogic.com/xdmp/property';
                       declare variable $lmprop as xs:QName := xs:QName('prop:last-modified');
                       declare variable $since as xs:dateTime external;
+                      declare variable $database as xs:string external;
                       try {
                         for $doc in cts:search(collection(),
                                         cts:properties-query(
@@ -43,7 +44,7 @@ else
                         return
                           xdmp:node-uri($doc)
                       } catch ($e) {
-                        let $trace := xdmp:log('MLSBackup warning: No element-range-index for prop:last-modified')
+                        let $trace := xdmp:log(concat('MLSBackup warning: No element-range-index for prop:last-modified in ', $database))
                         for $doc in collection()
                         let $uri := xdmp:node-uri($doc)
                         let $lm := xs:dateTime(xdmp:document-get-properties($uri, $lmprop))
@@ -63,4 +64,4 @@ else
     then
       xdmp:eval($uriquery, (), $evalopts)
     else
-      xdmp:eval($sincequery, (xs:QName("since"), $since), $evalopts)
+      xdmp:eval($sincequery, (xs:QName("since"), $since, xs:QName("database"), $database), $evalopts)
