@@ -18,9 +18,18 @@ declare variable $evalopts
 
 declare option xdmp:mapping "false";
 
+declare variable $type := xdmp:get-request-header("Content-Type");
+
 declare variable $doc
   := try {
-       xdmp:get-request-body("xml")
+       if (contains($type, "/xml") or contains($type, "+xml"))
+       then
+         (xdmp:get-request-body("xml"), xdmp:log("Loaded document as xml"))
+       else if (starts-with($type, "text/"))
+       then
+         (xdmp:get-request-body("text"), xdmp:log("Loaded document as text"))
+       else
+         (xdmp:get-request-body("binary"), xdmp:log("Loaded document as binary"))
      } catch ($e) {
        (xdmp:log($e),
         xdmp:log(xdmp:get-request-body("text")),
