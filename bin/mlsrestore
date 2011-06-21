@@ -35,6 +35,7 @@ my $ua = new LWP::UserAgent;
 $ua->agent("mlsrestore.pl/0.1 " . $ua->agent);
 $ua->timeout(300);
 
+print STDERR "Reading files...\n";
 my @files = ();
 if (defined($filelist)) {
     open (F, $filelist) || die "Cannot open files list: $filelist\n";
@@ -51,6 +52,8 @@ if (defined($filelist)) {
     }
     close (F);
 }
+
+print STDERR $#files+1, " files to restore...\n";
 
 my $count = 0;
 my $total = $#files + 1;
