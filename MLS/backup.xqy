@@ -36,7 +36,11 @@ declare function local:backup($uri as xs:string) {
        else
          if (count($doc/node()) = 1 and xdmp:node-kind(($doc/node())[1]) = "binary")
          then
-           "binary"
+           if (xdmp:binary-is-external($doc/node()))
+           then
+             "external-binary"
+           else
+             "binary"
          else
            "xml"
   return
@@ -71,7 +75,18 @@ sec:get-role-names($id)
           { xdmp:document-properties($uri)/prop:properties/* }
         </properties>
       </metadata>
-      <body>{ if ($format = "binary") then xs:hexBinary($doc) else $doc }</body>
+      <body>
+        { if ($format = "binary")
+          then xs:hexBinary($doc)
+          else if ($format = "external-binary")
+               then
+                 (attribute { fn:QName("", "path") } { xdmp:external-binary-path($doc/node()) },
+                  attribute { fn:QName("", "large") } { xdmp:binary-is-large($doc/node()) },
+                  attribute { fn:QName("", "offset") } { xdmp:binary-offset($doc/node())+1 },
+                  attribute { fn:QName("", "length") } { xdmp:binary-size($doc/node()) })
+               else $doc
+        }
+      </body>
     </document>
 };
 

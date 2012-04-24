@@ -11,3 +11,5 @@ The code in this project supports the ability to backup a MarkLogic
 database to a collection of plain text files on the filesystem.
 
 [[ FIXME: write a more complete description. ]]
+
+24 April 2012, added support for external binaries
