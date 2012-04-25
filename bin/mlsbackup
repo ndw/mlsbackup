@@ -109,7 +109,7 @@ while (@files) {
     getURL($requri, "$root/$file");
 }
 
-if (defined($tstamp)) {
+if (!$dryrun && defined($tstamp)) {
     if (! -f $tstamp) {
         open (F, ">$tstamp");
         close (F);
